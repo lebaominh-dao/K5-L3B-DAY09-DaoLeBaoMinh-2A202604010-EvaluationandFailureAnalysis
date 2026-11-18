@@ -2,6 +2,8 @@
 
     python scripts/probe_fm.py                          # matrix: bug switch -> failing claims (seed 11)
     python scripts/probe_fm.py --events sibling_refund C-001 11   # trace events of one trial
+    python scripts/probe_fm.py --v2                     # M5: same matrix on the adversarial pack only
+    python scripts/probe_fm.py --v2 --events stale_clause C-104 11
 
 Each probe shape is `fixed` (no_override) + one switch from lab9.variant_agent.BUGS, built in
 memory on a temp store. No Lab 8 file and no report is written. Run from src/.
@@ -21,11 +23,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from lab8.console import utf8_stdio  # noqa: E402
 from lab8.db import load_json, load_jsonl  # noqa: E402
 from lab8.shapes import SHAPES  # noqa: E402
-from lab9.eval import WORLD, make_task  # noqa: E402
+from lab9.eval import WORLD, load_spec, load_world, make_task  # noqa: E402
 from lab9.variant_agent import make_shape  # noqa: E402
 
 PROBES = ["ticket_trust", "ignore_denied", "pre_deducted", "sum_parts", "round_down",
-          "stale_clause", "sibling_refund", "leaky_trace", "misreport"]
+          "stale_clause", "sibling_refund", "leaky_trace", "misreport", "quiet_override"]
 AMOUNT = re.compile(r"([\d.]+)đ")
 
 
@@ -50,12 +52,17 @@ def main(argv: list[str] | None = None) -> int:
     utf8_stdio()
     ap = argparse.ArgumentParser(prog="probe_fm")
     ap.add_argument("--events", nargs=3, metavar=("BUG", "CLAIM", "SEED"))
+    ap.add_argument("--v2", action="store_true", help="v1 world + adversarial pack; matrix over pack claims")
     args = ap.parse_args(argv)
-    claims = load_jsonl(Path("data/public_claims.jsonl"))
+    if args.v2:
+        world, claims = load_world(load_spec(Path("config/metric_spec_v2.yaml")))
+        probe = [c for c in claims if c.get("mechanisms")]          # pack claims carry mechanisms
+    else:
+        claims, world = load_jsonl(Path("data/public_claims.jsonl")), load_json(WORLD)
+        probe = claims
     labels = {c["claim_id"]: c["expected"] for c in claims}
-    world = load_json(WORLD)
     runs = ([(args.events[0], args.events[1], int(args.events[2]))] if args.events
-            else [(b, c["claim_id"], 11) for b in PROBES for c in claims])
+            else [(b, c["claim_id"], 11) for b in PROBES for c in probe])
     with tempfile.TemporaryDirectory(prefix="lab9-probe-", ignore_cleanup_errors=True) as tmp:
         last = None
         for bug, claim_id, seed in runs:

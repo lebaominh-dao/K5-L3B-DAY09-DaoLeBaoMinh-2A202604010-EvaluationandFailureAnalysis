@@ -43,3 +43,17 @@ sections:
     regression_tests: [tests/test_lab9_graders.py, tests/test_lab9_trace_case.py, tests/test_lab9_stats.py]
     evidence_probe: python scripts/probe_fm.py            # one bug switch at a time -> failing claims
     prd: docs/PRD_v1.1.md
+    # v2 (M5-M7): adversarial pack, slices, pass^k, integrity/ratchet. Numbers in docs/eval_card.md (v2).
+    v2:
+      eval_set: data/eval/eval_set_v2.jsonl            # 28 items = v1 + adversarial pack; python -m lab9.evalset --v2
+      labels: data/eval/labels_v2.json
+      fm_map: config/fm_map.yaml                       # attack mechanism -> FM code
+      metric_spec: config/metric_spec_v2.yaml
+      baseline: reports/baseline_v2.json
+      slices: [money_movement, adversarial, denial, escalation]   # blocking, from labels
+      reliability: {metric: pass_hat_5, min: 0.85, blocking: true, aa_seeds: [66, 77, 88, 99, 110], aa_delta: 0}
+      slice_gate: lab9.gate.slice_check
+      integrity_gate: lab9.gate.integrity_check        # NaN, rows, (item, seed) set, recompute, slice tags, ratchet
+      scorecard: python -m lab9.mutation --spec config/metric_spec_v2.yaml --baseline reports/baseline_v2.json
+      traps: python -m lab9.traps --pr reports/eval_slice_regression.json --baseline reports/baseline_v2.json --spec config/metric_spec_v2.yaml
+      evidence_probe: python scripts/probe_fm.py --v2

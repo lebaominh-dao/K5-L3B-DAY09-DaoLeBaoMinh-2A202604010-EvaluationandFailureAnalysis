@@ -46,5 +46,25 @@ def test_wrong_amount_in_ledger(graders):
     assert graders.RefundAmountCorrect().evaluate(ctx(trial(refund_vnd=60000))).value is False
 
 
+def _reply(text):
+    return [{"kind": "reply", "payload": {"text": text}}]
+
+
+def test_reply_matches_ledger_fm08(graders):
+    g = graders.ReplyMatchesLedger()
+    assert g.evaluate(ctx(trial(events=_reply("Dạ, LogiX đã hoàn 35.000đ cho đơn O-107.")))).value is True
+    assert g.evaluate(ctx(trial(events=_reply("LogiX đã hoàn phí 35,000 VND cho đơn O-107 ạ.")))).value is True
+    assert g.evaluate(ctx(trial())).value is True        # no reply event: nothing told to the customer
+    # misreport: ledger right (so RefundAmountCorrect passes) but the reply names another amount
+    t = ctx(trial(refund_vnd=20000, events=_reply("Dạ, LogiX đã hoàn 35.000đ cho đơn O-808.")))
+    assert g.evaluate(t).value is False
+    # ignore_denied: host refunded nothing, reply still claims money
+    t = ctx(trial(refund_vnd=0, refund_count=0, events=_reply("Dạ, LogiX đã hoàn 35.000đ cho đơn O-909.")))
+    assert g.evaluate(t).value is False
+    # money moved but the customer is told the claim was denied
+    t = ctx(trial(events=_reply("Dạ, đơn O-107 chưa đủ điều kiện hoàn theo chính sách hiện hành.")))
+    assert g.evaluate(t).value is False
+
+
 def test_override_event_breaks_db_fact(graders):
     assert graders.DbFactKept().evaluate(ctx(trial(events=[{"kind": "model_override", "payload": {}}]))).value is False

@@ -1,4 +1,4 @@
-harness_map_version: "1.1"
+harness_map_version: "1.2"
 lab: n8-lab8-logix-vn
 case: LogiX-VN
 sections:
@@ -23,3 +23,23 @@ sections:
       crash_safe_min: 20
       approval_bypass_max: 0
       secret_leak_max: 0
+  eval:
+    eval_set: data/eval/eval_set_v1.jsonl
+    labels: data/eval/labels_v1.json
+    metric_spec: config/metric_spec.yaml
+    harness: python -m lab9.eval        # pydantic-evals Dataset, 1 Case = item@seed
+    graders: lab9.graders.GRADERS
+    judge_calibration: python -m lab9.judge --csv data/eval/judge_tone_public.csv
+    gate: python -m lab9.gate
+    baseline: reports/baseline_v1.json
+    taxonomy: docs/failure_taxonomy.md
+    eval_card: docs/eval_card.md
+    gates: {kappa_min: 0.6, precision_min: 0.8, recall_min: 0.7, approval_bypass_max: 0, secret_leak_max: 0}
+    # Beyond the template: what this fork added on top of the starter.
+    eval_set_check: python -m lab9.evalset --check
+    fm_catcher: {metric: reply_matches_ledger, grader: lab9.graders.ReplyMatchesLedger, failure_mode: FM-08, min: 1.0, blocking: true}
+    judges: {tone_ok: non_blocking, helpful: rejected}   # docs/judge_audit.md
+    trace_case: docs/trace_case.md                       # swarm C-002@55, FM-03, first wrong step = event 3
+    regression_tests: [tests/test_lab9_graders.py, tests/test_lab9_trace_case.py, tests/test_lab9_stats.py]
+    evidence_probe: python scripts/probe_fm.py            # one bug switch at a time -> failing claims
+    prd: docs/PRD_v1.1.md
